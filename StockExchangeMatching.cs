@@ -52,6 +52,11 @@ class Result
         }
         int selected = 0;
         foreach(var qIndex in qIndexes) {
+            if (selected == s.Count - 1) {
+                prices[qIndex.Value] = sharesPrices.Last().Value;
+                continue;
+            }            
+            
             for(var i = selected; i < s.Count; i++) {
                 var tempSharePrice = sharesPrices.ElementAt(i);
                 if (qIndex.Key >= tempSharePrice.Key) {
