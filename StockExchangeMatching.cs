@@ -27,21 +27,44 @@ class Result
 
     public static List<int> computePrices(List<int> s, List<int> p, List<int> q)
     {
+        Dictionary<int, int> sharesPrices = new Dictionary<int, int>();
+        List<int> sortedShares = new List<int>();
+        foreach(var share in s) {
+            sortedShares.Add(share);
+        }
+        sortedShares.Sort();
+        foreach(var share in sortedShares) {
+            var index = s.IndexOf(share);
+            sharesPrices.Add(share, p[index]);
+        }
+        Dictionary<int, int> qIndexes = new Dictionary<int, int>();
+        List<int> sortedQ = new List<int>();
+        foreach(var item in q) {
+            sortedQ.Add(item);
+        }
+        sortedQ.Sort();
+        foreach(var item in sortedQ) {
+            qIndexes.Add(item, q.IndexOf(item));
+        }
         List<int> prices = new List<int>();
-        foreach(var quantity in q) {
-            int selectedShare = 0;
-            int index = 0;
-            foreach(var share in s) {
-                if (quantity >= share && share >= selectedShare) {
-                    selectedShare = share;
-                    index = s.IndexOf(selectedShare);
+        for(int i = 0; i < q.Count; i++) {
+            prices.Add(0);
+        }
+        int selected = 0;
+        foreach(var qIndex in qIndexes) {
+            for(var i = selected; i < s.Count; i++) {
+                var tempSharePrice = sharesPrices.ElementAt(i);
+                if (qIndex.Key >= tempSharePrice.Key) {
+                    prices[qIndex.Value] = tempSharePrice.Value;                    
                 }
-            }
-            prices.Add(p.ElementAt(index));
+                else {
+                    selected = i - 1;
+                    break;
+                }                
+            }            
         }
         return prices;
     }
-
 }
 
 class Solution
