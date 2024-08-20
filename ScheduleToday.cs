@@ -1,15 +1,16 @@
+// @nuget: HtmlAgilityPack
+// @nuget: System.Net.Http
 using System;
 using System.Collections.Generic;
 using System.Net;
 using System.Net.Http;
-using System.Threading.Tasks;
 using HtmlAgilityPack;
-
-class Program
+					
+public class Program
 {
-    static async Task Main(string[] args)
-    {
-        // URL của trang web
+	public static void Main()
+	{
+		// URL của trang web
         string url = "https://app.haugiang.gov.vn/LichLamViec/Lich/DonVi?MaDonVi=vptu";
 
         // Sử dụng HttpClient để gửi yêu cầu GET
@@ -18,11 +19,11 @@ class Program
             try
             {
                 // Gửi yêu cầu GET
-                HttpResponseMessage response = await client.GetAsync(url);
+                HttpResponseMessage response = client.GetAsync(url).Result;
                 response.EnsureSuccessStatusCode();
 
                 // Lấy nội dung phản hồi dưới dạng chuỗi
-                string pageContent = await response.Content.ReadAsStringAsync();
+                string pageContent = response.Content.ReadAsStringAsync().Result;
 
                 // Tải nội dung vào HtmlDocument (sử dụng HtmlAgilityPack)
                 HtmlDocument document = new HtmlDocument();
@@ -42,29 +43,31 @@ class Program
                         pContents.Add(p.InnerText.Trim());
                     }
 
-                    // Tìm vị trí của nội dung cuối cùng chứa "19/8/2024"
+                    // Tìm vị trí của nội dung cuối cùng chứa fromDate
+					var fromDate = "20/8/2024";
+					var toDate = ", ngày 21/8/2024";
                     int fromDateIndex = -1;
                     for (int i = 0; i < pContents.Count; i++)
                     {
-                        if (pContents[i].Contains("19/8/2024"))
+                        if (pContents[i].Contains(fromDate))
                         {
                             fromDateIndex = i;
                         }
                     }
 
-                    // Kiểm tra nếu tìm thấy "FromDate"
+                    // Kiểm tra nếu tìm thấy "fromDate"
                     if (fromDateIndex != -1)
                     {
                         Console.WriteLine("Chương trình làm việc của Thường trực Tỉnh ủy Hậu Giang hôm nay:");
 
-                        // In các thành phần từ "FromDate" và dừng khi gặp ", ng&agrave;y 20/8/2024"
+                        // In các thành phần từ "FromDate" và dừng khi gặp "toDate"
                         for (int i = fromDateIndex; i < pContents.Count; i++)
                         {
                             // Giải mã nội dung HTML
                             string decodedContent = WebUtility.HtmlDecode(pContents[i]);
 
-                            // Dừng khi gặp ", ng&agrave;y 20/8/2024"
-                            if (decodedContent.Contains(", ngày 20/8/2024"))
+                            // Dừng khi gặp toDate
+                            if (decodedContent.Contains(toDate))
                             {
                                 break;
                             }
@@ -74,7 +77,7 @@ class Program
                     }
                     else
                     {
-                        Console.WriteLine("Không tìm thấy thẻ <p> chứa '19/8/2024'.");
+                        Console.WriteLine("Không tìm thấy thẻ <p> chứa fromDate'.");
                     }
                 }
                 else
@@ -87,5 +90,5 @@ class Program
                 Console.WriteLine("Đã xảy ra lỗi: " + ex.Message);
             }
         }
-    }
+	}
 }
