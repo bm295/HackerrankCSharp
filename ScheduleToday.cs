@@ -1,94 +1,101 @@
 // @nuget: HtmlAgilityPack
 // @nuget: System.Net.Http
-using System;
-using System.Collections.Generic;
 using System.Net;
 using System.Net.Http;
 using HtmlAgilityPack;
-					
-public class Program
+
+public static class Program
 {
-	public static void Main()
-	{
-		// URL của trang web
-        string url = "https://app.haugiang.gov.vn/LichLamViec/Lich/DonVi?MaDonVi=vptu";
+    private const string Url = "https://app.haugiang.gov.vn/LichLamViec/Lich/DonVi?MaDonVi=vptu";
+    private const string FromDate = "20/8/2024";
+    private const string ToDate = ", ngày 21/8/2024";
 
-        // Sử dụng HttpClient để gửi yêu cầu GET
-        using (HttpClient client = new HttpClient())
+    public static async Task Main()
+    {
+        using var client = new HttpClient();
+
+        try
         {
-            try
+            var pageContent = await GetPageContentAsync(client, Url);
+            var pContents = ExtractParagraphContents(pageContent);
+
+            if (pContents.Count == 0)
             {
-                // Gửi yêu cầu GET
-                HttpResponseMessage response = client.GetAsync(url).Result;
-                response.EnsureSuccessStatusCode();
-
-                // Lấy nội dung phản hồi dưới dạng chuỗi
-                string pageContent = response.Content.ReadAsStringAsync().Result;
-
-                // Tải nội dung vào HtmlDocument (sử dụng HtmlAgilityPack)
-                HtmlDocument document = new HtmlDocument();
-                document.LoadHtml(pageContent);
-
-                // Chọn tất cả các thẻ <p>
-                var pNodes = document.DocumentNode.SelectNodes("//p");
-
-                if (pNodes != null)
-                {
-                    // Tạo danh sách để lưu nội dung các thẻ <p>
-                    List<string> pContents = new List<string>();
-
-                    // Đưa nội dung của từng thẻ <p> vào danh sách
-                    foreach (var p in pNodes)
-                    {
-                        pContents.Add(p.InnerText.Trim());
-                    }
-
-                    // Tìm vị trí của nội dung cuối cùng chứa fromDate
-					var fromDate = "20/8/2024";
-					var toDate = ", ngày 21/8/2024";
-                    int fromDateIndex = -1;
-                    for (int i = 0; i < pContents.Count; i++)
-                    {
-                        if (pContents[i].Contains(fromDate))
-                        {
-                            fromDateIndex = i;
-                        }
-                    }
-
-                    // Kiểm tra nếu tìm thấy "fromDate"
-                    if (fromDateIndex != -1)
-                    {
-                        Console.WriteLine("Chương trình làm việc của Thường trực Tỉnh ủy Hậu Giang hôm nay:");
-
-                        // In các thành phần từ "FromDate" và dừng khi gặp "toDate"
-                        for (int i = fromDateIndex; i < pContents.Count; i++)
-                        {
-                            // Giải mã nội dung HTML
-                            string decodedContent = WebUtility.HtmlDecode(pContents[i]);
-
-                            // Dừng khi gặp toDate
-                            if (decodedContent.Contains(toDate))
-                            {
-                                break;
-                            }
-
-                            Console.WriteLine(decodedContent);
-                        }
-                    }
-                    else
-                    {
-                        Console.WriteLine("Không tìm thấy thẻ <p> chứa fromDate'.");
-                    }
-                }
-                else
-                {
-                    Console.WriteLine("Không tìm thấy thẻ <p> nào trên trang.");
-                }
+                Console.WriteLine("Không tìm thấy thẻ <p> nào trên trang.");
+                return;
             }
-            catch (Exception ex)
+
+            var fromDateIndex = FindLastIndexContaining(pContents, FromDate);
+            if (fromDateIndex < 0)
             {
-                Console.WriteLine("Đã xảy ra lỗi: " + ex.Message);
+                Console.WriteLine("Không tìm thấy thẻ <p> chứa fromDate'.");
+                return;
+            }
+
+            Console.WriteLine("Chương trình làm việc của Thường trực Tỉnh ủy Hậu Giang hôm nay:");
+
+            foreach (var content in pContents[fromDateIndex..])
+            {
+                var decodedContent = WebUtility.HtmlDecode(content);
+                if (decodedContent.Contains(ToDate, StringComparison.Ordinal))
+                {
+                    break;
+                }
+
+                Console.WriteLine(decodedContent);
             }
         }
-	}
+        catch (HttpRequestException ex)
+        {
+            Console.WriteLine($"Không thể tải dữ liệu từ máy chủ: {ex.Message}");
+        }
+        catch (TaskCanceledException ex)
+        {
+            Console.WriteLine($"Yêu cầu đã hết thời gian chờ: {ex.Message}");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Đã xảy ra lỗi: {ex.Message}");
+        }
+    }
+
+    private static async Task<string> GetPageContentAsync(HttpClient client, string url)
+    {
+        using var response = await client.GetAsync(url);
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadAsStringAsync();
+    }
+
+    private static List<string> ExtractParagraphContents(string pageContent)
+    {
+        var document = new HtmlDocument();
+        document.LoadHtml(pageContent);
+
+        var pNodes = document.DocumentNode.SelectNodes("//p");
+        if (pNodes is null)
+        {
+            return [];
+        }
+
+        var contents = new List<string>(pNodes.Count);
+        foreach (var p in pNodes)
+        {
+            contents.Add(p.InnerText.Trim());
+        }
+
+        return contents;
+    }
+
+    private static int FindLastIndexContaining(IReadOnlyList<string> values, string searchText)
+    {
+        for (var i = values.Count - 1; i >= 0; i--)
+        {
+            if (values[i].Contains(searchText, StringComparison.Ordinal))
+            {
+                return i;
+            }
+        }
+
+        return -1;
+    }
 }
